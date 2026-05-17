@@ -1,0 +1,151 @@
+ Program
+   Variables Setup
+   Robot Program
+     'Hem definit el valor de les variables a l'inici'
+     'Definim els parametres constants'
+     profunditat≔0.12
+     r_incisio≔0.03
+     r_profunditat≔0.1
+     enviant≔ True 
+     'Ara activem el mode freedrive per moure el robot lliurament'
+     freedrive_mode()
+     'Ara guardem la posicio de la incisio esperant 5 segons que el robot no es mogui'
+     p_anterior≔[0,0,0]
+     'Enviem un 0 a l'ordinador per dir que encara no hem triat la incisio'
+     write_output_integer_register(0,0)
+     Loop triant_incisio
+       pos_incisio≔get_actual_tcp_pose()
+       pos_list≔[pos_incisio[0],pos_incisio[1],pos_incisio[2]]
+       diff_list≔[pos_list[0]-p_anterior[0],pos_list[1]-p_anterior[1],pos_list[2]-p_anterior[2]]
+       If diff_list[0]<0.01 and diff_list[1]<0.01 and diff_list[2]<0.01
+         guardant_inc≔ True 
+       Else
+         guardant_inc≔ False 
+         n≔0
+       p_anterior≔pos_list
+       If guardant_inc≟ True 
+         n≔n+1
+         Wait: 1.0
+         'Contem 5 segons que el robot esta quiet per determinar que volem fer a alla la incisio'
+         If n≟4
+           Call guardar_incisio
+           triant_incisio≔ False 
+           'Ara enviem un 1 a l'ordindor per dir que ja hem guardat la incisio'
+           write_output_integer_register(0,1)
+     'Ara activem el loop per poder duu a terme la intervencio'
+     Loop
+       'Mirem les condicions i rectifiquem si es necessari'
+       Call comprovem
+       'Corregim la posicio de la punta l'eina i del punt a l'altura dela incisio'
+       Call corregim_eina
+       Wait: 0.01
+   corregim_eina
+     'Calculem un punt al centre del volum per corregir la punta'
+     centre_volum≔[x0+(unitari_n[0]*profunditat*0.5),y0+(unitari_n[1]*profunditat*0.5),z0+(unitari_n[2]*profunditat*0.5)]
+     'Calculem el vector directo per corregir la punta de l'eina, des de la posicio actual al cente relatiu'
+     vd1≔[centre_volum[0]-x,centre_volum[1]-y,centre_volum[2]-z]
+     'Calculem el vector directo per corregir la punta de l'eina, des de la posicio actual al cente relatiu'
+     vd2≔[x0-x_inc,y0-y_inc,z0-z_inc]
+     'comprovem si estem fora del volum'
+     Wait: 0.01
+     If fora_punta≟ True 
+       'Corregim la punta'
+       MoveL
+         Direction: Base
+           Until (distance)
+       'Tornem a activar el freedrive i posem que estem dins del volum'
+       sync()
+       freedrive_mode()
+       fora_punta≔ False 
+     If fora_incisio≟ True 
+       'Corregim el punt a la incisio'
+       MoveL
+         Direction: Base
+           Until (distance)
+       'Tornem a activar el freedrive i posem que estem dins del volum'
+       sync()
+       freedrive_mode()
+       fora_incisio≔ False 
+   comprovem
+     pos_actual≔get_actual_tcp_pose()
+     pos_act_flange≔get_actual_tool_flange_pose()
+     'Guardem coordenades del tcp actual'
+     x≔pos_actual[0]
+     y≔pos_actual[1]
+     z≔pos_actual[2]
+     'Guardem coordenades del flang actual'
+     xf≔pos_act_flange[0]
+     yf≔pos_act_flange[1]
+     zf≔pos_act_flange[2]
+     'Ara mirem l'alcada respcte l'eix entre els dos centres quan la punta es a dins el volum'
+     'Primer calculem el vector director del punt actual de la punta al centre de la incisio'
+     vr≔[x-x0,y-y0,z-z0]
+     'Ara fem el producte escalar d'aquest amb el n_unitari (eix) per saber l'alcada'
+     h≔(vr[0]*unitari_n[0])+(vr[1]*unitari_n[1])+(vr[2]*unitari_n[2])
+     'Ara calculem el centre relatiu a l'alcada calculada'
+     c_relatiu≔[x0+(h*unitari_n[0]),y0+(h*unitari_n[1]),z0+(h*unitari_n[2])]
+     'Ara ja si podem calcular el radi relatiu'
+     r_relatiu≔sqrt(pow(x-c_relatiu[0],2)+pow(y-c_relatiu[1],2)+pow(z-c_relatiu[2],2))
+     'Ara hem de calcular el radi limit a l'alcada de la punta calculada'
+     k≔h/profunditat
+     r_limit≔r_incisio+k*(r_profunditat-r_incisio)
+     'Ara comprovem que el radi relatiu no sigui mes gran que el radi limit, si ho es, parem perque estem al limit/fora del volum'
+     'Agafem la formula de la recta (x,y,z)=(x0,y0,z0)+t*(vx,vy,vz) i la substituirem a la formula del pla de la incisio per veure el valor de t'
+     If r_relatiu≥r_limit
+       fora_punta≔ True 
+       end_freedrive_mode()
+       Wait: 0.01
+     'Per ultim comprovarem que el punt del vector flange-punta que formi part del pla de la incisio no surti del radi de la incisio'
+     'Quan tinguem t la tornare a substituir a la formula de la recta i obtindrem el punt'
+     t_num≔(nx*(x0-xf))+(ny*(y0-yf))+(nz*(z0-zf))
+     'Calculem el vector director actual de la punta al l'eina/flange'
+     vec_dir_act≔[x-xf,y-yf,z-zf]
+     t_denom≔(nx*vec_dir_act[0])+(ny*vec_dir_act[1])+(nz*vec_dir_act[2])
+     'Calculem t'
+     t≔t_num/t_denom
+     'Calculem les coordenades del punt projectat al pla de la incisio'
+     x_inc≔xf+(t*vec_dir_act[0])
+     y_inc≔yf+(t*vec_dir_act[1])
+     z_inc≔zf+(t*vec_dir_act[2])
+     'Ara calculem el radi respecte el centre de la incisio'
+     r_inc_act≔sqrt(pow(x_inc-x0,2)+pow(y_inc-y0,2)+pow(z_inc-z0,2))
+     'Ara comprovem que el radi actual a la incisio no sigui mes gran que el radi de la incisio'
+     If r_inc_act≥r_incisio
+       fora_incisio≔ True 
+       end_freedrive_mode()
+       Wait: 0.01
+     'Comprovem si estem mes baix de la profundita permesa, si ho estem parem perque estem al limit del volum'
+     If h≥profunditat
+       fora_punta≔ True 
+       end_freedrive_mode()
+       Wait: 0.01
+   guardar_incisio
+     x0≔pos_incisio[0]
+     y0≔pos_incisio[1]
+     z0≔pos_incisio[2]
+     'Guardem el centre de la incisio en tipus list'
+     c_incisio≔[x0,y0,z0]
+     'Ara podem obtenir la normal del pla de la incisio '
+     nx≔x0-xf
+     ny≔y0-yf
+     nz≔z0-zf
+     'Ara calculem el modul per poder fer el vector unitari i calcular el punt del centre de volum a la profunditat que volem'
+     modul_n≔sqrt(pow(nx,2)+pow(ny,2)+pow(nz,2))
+     unitari_n≔[nx/modul_n,ny/modul_n,nz/modul_n]
+     'Calculem el centre en la profunditat que volem'
+     c_profunditat≔[x0+(unitari_n[0]*profunditat),y0+(unitari_n[1]*profunditat),z0+(unitari_n[2]*profunditat)]
+   Enviar_dades_tool_flange
+     'Enviem les dades necessaries per poder representar el volum a l'ordindor, enviem la posicio de tool'
+     write_output_float_register(0,xf)
+     write_output_float_register(1,yf)
+     write_output_float_register(2,zf)
+   obtenir_p_flange_actual
+     'Guardem la posicio de l'eina (flange)'
+     pos_inc_flange≔get_actual_tool_flange_pose()
+     xf≔pos_inc_flange[0]
+     yf≔pos_inc_flange[1]
+     zf≔pos_inc_flange[2]
+   Thread_1
+     'Fem un thread per enviar continuament la posicio del flange ja que polyscope no te la funcio per rtde'
+     Call obtenir_p_flange_actual
+     Call Enviar_dades_tool_flange

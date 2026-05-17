@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+<rtde_config>
+    <recipe key="out">
+        <field name="timestamp"                  type="DOUBLE"/>
+        <field name="actual_TCP_pose"            type="VECTOR6D"/>
+        <field name="actual_TCP_speed"           type="VECTOR6D"/>
+        <field name="robot_status_bits"          type="UINT32"/>
+
+        <!-- Posició del flange [xf, yf, zf] enviada des de PolyScope -->
+        <field name="output_double_register_0"   type="DOUBLE"/>
+        <field name="output_double_register_1"   type="DOUBLE"/>
+        <field name="output_double_register_2"   type="DOUBLE"/>
+
+        <!-- Flag: 0 = triant incisió, 1 = incisió confirmada -->
+        <field name="output_int_register_0"      type="INT32"/>
+    </recipe>
+</rtde_config>

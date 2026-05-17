@@ -1,0 +1,470 @@
+def Tfg_lab():
+  global _hidden_verificationVariable=0
+  step_count_f4e8487b_9547_4330_90d0_432b60ca83fe = 0.0
+  thread Step_Counter_Thread_185c9a24_d460_4cfc_aee9_b7b5386aa641():
+    while (True):
+      step_count_f4e8487b_9547_4330_90d0_432b60ca83fe = step_count_f4e8487b_9547_4330_90d0_432b60ca83fe + 1.0
+      sync()
+    end
+  end
+  run Step_Counter_Thread_185c9a24_d460_4cfc_aee9_b7b5386aa641()
+  set_target_payload(0.150000, [0.006000, 0.014000, 0.003000], [0.000065, 0.000065, 0.000065, 0.000000, 0.000000, 0.000000])
+  set_standard_analog_input_domain(0, 1)
+  set_standard_analog_input_domain(1, 1)
+  set_tool_analog_input_domain(0, 1)
+  set_tool_analog_input_domain(1, 1)
+  set_analog_outputdomain(0, 0)
+  set_analog_outputdomain(1, 0)
+  set_input_actions_to_default()
+  set_tool_communication(False, 115200, 0, 1, 1.5, 3.5)
+  set_tool_output_mode(0)
+  set_tool_digital_output_mode(0, 1)
+  set_tool_digital_output_mode(1, 1)
+  set_tool_voltage(0)
+  set_safety_mode_transition_hardness(1)
+  set_tcp(p[-0.003049612692822959,-2.1731928498855413E-4,0.2387035700618463,0.024807589293357385,0.004176473876104508,-0.6263398224232589])
+  set_gravity([0.0, 0.0, 9.82])
+  # begin: URCap Installation Node
+  #   Source: External Control, 1.0.5, FZI Research Center for Information Technology
+  #   Type: External Control
+  # end: URCap Installation Node
+  global fora_incisio=  False  
+  global fora_punta=  False  
+  global guardant_inc=  False  
+  global triant_incisio=  True  
+  def calculate_point_to_move_towards(feature, direction, position_distance):
+    local posDir=[direction[0], direction[1], direction[2]]
+    if (norm(posDir) < 1e-6):
+      return get_target_waypoint()
+    end
+    local direction_vector_normalized=normalize(posDir)
+    local displacement_pose=p[direction_vector_normalized[0] * position_distance,direction_vector_normalized[1] * position_distance,direction_vector_normalized[2] * position_distance,0,0,0]
+    local wanted_displacement_in_base_frame=pose_sub(pose_trans(feature, displacement_pose), feature)
+    return pose_add(get_target_waypoint(), wanted_displacement_in_base_frame)
+  end
+  def corregim_eina():
+    $ 41 "corregim_eina" "noBreak"
+    $ 42 "'Calculem un punt al centre del volum per corregir la punta'"
+    # 'Calculem un punt al centre del volum per corregir la punta'
+    $ 43 "centre_volum≔[x0+(unitari_n[0]*profunditat*0.5),y0+(unitari_n[1]*profunditat*0.5),z0+(unitari_n[2]*profunditat*0.5)]"
+    global centre_volum=[x0+(unitari_n[0]*profunditat*0.5),y0+(unitari_n[1]*profunditat*0.5),z0+(unitari_n[2]*profunditat*0.5)]
+    $ 44 "'Calculem el vector directo per corregir la punta de l'eina, des de la posicio actual al cente relatiu'"
+    # 'Calculem el vector directo per corregir la punta de l'eina, des de la posicio actual al cente relatiu'
+    $ 45 "vd1≔[centre_volum[0]-x,centre_volum[1]-y,centre_volum[2]-z]"
+    global vd1=[centre_volum[0]-x,centre_volum[1]-y,centre_volum[2]-z]
+    $ 46 "'Calculem el vector directo per corregir la punta de l'eina, des de la posicio actual al cente relatiu'"
+    # 'Calculem el vector directo per corregir la punta de l'eina, des de la posicio actual al cente relatiu'
+    $ 47 "vd2≔[x0-x_inc,y0-y_inc,z0-z_inc]"
+    global vd2=[x0-x_inc,y0-y_inc,z0-z_inc]
+    $ 48 "'comprovem si estem fora del volum'"
+    # 'comprovem si estem fora del volum'
+    $ 49 "Wait: 0.01"
+    sleep(0.01)
+    $ 50 "If fora_punta≟ True "
+    global thread_flag_50=0
+    thread Thread_if_50():
+      $ 51 "'Corregim la punta'"
+      # 'Corregim la punta'
+      $ 52 "MoveL"
+      $ 53 "Direction: Base"
+      global move_thread_flag_53=0
+      thread move_thread_53():
+        enter_critical
+        move_thread_flag_53 = 1
+        local towardsPos=calculate_point_to_move_towards(p[0.0,0.0,0.0,0.0,0.0,0.0], vd1, 0.003)
+        movel(towardsPos, a=0.08, v=0.01)
+        move_thread_flag_53 = 2
+        exit_critical
+      end
+      move_thread_flag_53 = 0
+      move_thread_han_53 = run move_thread_53()
+      while (True):
+        sleep(1.0E-10)
+        if (move_thread_flag_53 > 1):
+          join move_thread_han_53
+          $ 54 "Until (distance)"
+          break
+        end
+        sync()
+      end
+      $ 55 "'Tornem a activar el freedrive i posem que estem dins del volum'"
+      # 'Tornem a activar el freedrive i posem que estem dins del volum'
+      $ 56 "sync()"
+      sync()
+      $ 57 "freedrive_mode()"
+      freedrive_mode()
+      $ 58 "fora_punta≔ False "
+      global fora_punta=  False  
+      thread_flag_50 = 1
+    end
+    if (fora_punta ==   True  ):
+      global thread_handler_50=run Thread_if_50()
+      while (thread_flag_50 == 0):
+        if not(fora_punta ==   True  ):
+          kill thread_handler_50
+          thread_flag_50 = 2
+        else:
+          sync()
+        end
+      end
+    else:
+      thread_flag_50 = 2
+    end
+    $ 59 "If fora_incisio≟ True "
+    global thread_flag_59=0
+    thread Thread_if_59():
+      $ 60 "'Corregim el punt a la incisio'"
+      # 'Corregim el punt a la incisio'
+      $ 61 "MoveL"
+      $ 62 "Direction: Base"
+      global move_thread_flag_62=0
+      thread move_thread_62():
+        enter_critical
+        move_thread_flag_62 = 1
+        local towardsPos=calculate_point_to_move_towards(p[0.0,0.0,0.0,0.0,0.0,0.0], vd2, 0.003)
+        movel(towardsPos, a=0.08, v=0.01)
+        move_thread_flag_62 = 2
+        exit_critical
+      end
+      move_thread_flag_62 = 0
+      move_thread_han_62 = run move_thread_62()
+      while (True):
+        sleep(1.0E-10)
+        if (move_thread_flag_62 > 1):
+          join move_thread_han_62
+          $ 63 "Until (distance)"
+          break
+        end
+        sync()
+      end
+      $ 64 "'Tornem a activar el freedrive i posem que estem dins del volum'"
+      # 'Tornem a activar el freedrive i posem que estem dins del volum'
+      $ 65 "sync()"
+      sync()
+      $ 66 "freedrive_mode()"
+      freedrive_mode()
+      $ 67 "fora_incisio≔ False "
+      global fora_incisio=  False  
+      thread_flag_59 = 1
+    end
+    if (fora_incisio ==   True  ):
+      global thread_handler_59=run Thread_if_59()
+      while (thread_flag_59 == 0):
+        if not(fora_incisio ==   True  ):
+          kill thread_handler_59
+          thread_flag_59 = 2
+        else:
+          sync()
+        end
+      end
+    else:
+      thread_flag_59 = 2
+    end
+  end
+  def comprovem():
+    $ 68 "comprovem" "noBreak"
+    $ 69 "pos_actual≔get_actual_tcp_pose()"
+    global pos_actual= get_actual_tcp_pose ()
+    $ 70 "pos_act_flange≔get_actual_tool_flange_pose()"
+    global pos_act_flange=get_actual_tool_flange_pose()
+    $ 71 "'Guardem coordenades del tcp actual'"
+    # 'Guardem coordenades del tcp actual'
+    $ 72 "x≔pos_actual[0]"
+    global x=pos_actual[0]
+    $ 73 "y≔pos_actual[1]"
+    global y=pos_actual[1]
+    $ 74 "z≔pos_actual[2]"
+    global z=pos_actual[2]
+    $ 75 "'Guardem coordenades del flang actual'"
+    # 'Guardem coordenades del flang actual'
+    $ 76 "xf≔pos_act_flange[0]"
+    global xf=pos_act_flange[0]
+    $ 77 "yf≔pos_act_flange[1]"
+    global yf=pos_act_flange[1]
+    $ 78 "zf≔pos_act_flange[2]"
+    global zf=pos_act_flange[2]
+    $ 79 "'Ara mirem l'alcada respcte l'eix entre els dos centres quan la punta es a dins el volum'"
+    # 'Ara mirem l'alcada respcte l'eix entre els dos centres quan la punta es a dins el volum'
+    $ 80 "'Primer calculem el vector director del punt actual de la punta al centre de la incisio'"
+    # 'Primer calculem el vector director del punt actual de la punta al centre de la incisio'
+    $ 81 "vr≔[x-x0,y-y0,z-z0]"
+    global vr=[x-x0,y-y0,z-z0]
+    $ 82 "'Ara fem el producte escalar d'aquest amb el n_unitari (eix) per saber l'alcada'"
+    # 'Ara fem el producte escalar d'aquest amb el n_unitari (eix) per saber l'alcada'
+    $ 83 "h≔(vr[0]*unitari_n[0])+(vr[1]*unitari_n[1])+(vr[2]*unitari_n[2])"
+    global h=(vr[0]*unitari_n[0])+(vr[1]*unitari_n[1])+(vr[2]*unitari_n[2])
+    $ 84 "'Ara calculem el centre relatiu a l'alcada calculada'"
+    # 'Ara calculem el centre relatiu a l'alcada calculada'
+    $ 85 "c_relatiu≔[x0+(h*unitari_n[0]),y0+(h*unitari_n[1]),z0+(h*unitari_n[2])]"
+    global c_relatiu=[x0+(h*unitari_n[0]),y0+(h*unitari_n[1]),z0+(h*unitari_n[2])]
+    $ 86 "'Ara ja si podem calcular el radi relatiu'"
+    # 'Ara ja si podem calcular el radi relatiu'
+    $ 87 "r_relatiu≔sqrt(pow(x-c_relatiu[0],2)+pow(y-c_relatiu[1],2)+pow(z-c_relatiu[2],2))"
+    global r_relatiu=sqrt(pow(x-c_relatiu[0],2)+pow(y-c_relatiu[1],2)+pow(z-c_relatiu[2],2))
+    $ 88 "'Ara hem de calcular el radi limit a l'alcada de la punta calculada'"
+    # 'Ara hem de calcular el radi limit a l'alcada de la punta calculada'
+    $ 89 "k≔h/profunditat"
+    global k=h/profunditat
+    $ 90 "r_limit≔r_incisio+k*(r_profunditat-r_incisio)"
+    global r_limit=r_incisio+k*(r_profunditat-r_incisio)
+    $ 91 "'Ara comprovem que el radi relatiu no sigui mes gran que el radi limit, si ho es, parem perque estem al limit/fora del volum'"
+    # 'Ara comprovem que el radi relatiu no sigui mes gran que el radi limit, si ho es, parem perque estem al limit/fora del volum'
+    $ 92 "'Agafem la formula de la recta (x,y,z)=(x0,y0,z0)+t*(vx,vy,vz) i la substituirem a la formula del pla de la incisio per veure el valor de t'"
+    # 'Agafem la formula de la recta (x,y,z)=(x0,y0,z0)+t*(vx,vy,vz) i la substituirem a la formula del pla de la incisio per veure el valor de t'
+    $ 93 "If r_relatiu≥r_limit"
+    global thread_flag_93=0
+    thread Thread_if_93():
+      $ 94 "fora_punta≔ True "
+      global fora_punta=  True  
+      $ 95 "end_freedrive_mode()"
+      end_freedrive_mode()
+      $ 96 "Wait: 0.01"
+      sleep(0.01)
+      thread_flag_93 = 1
+    end
+    if (r_relatiu >= r_limit):
+      global thread_handler_93=run Thread_if_93()
+      while (thread_flag_93 == 0):
+        if not(r_relatiu >= r_limit):
+          kill thread_handler_93
+          thread_flag_93 = 2
+        else:
+          sync()
+        end
+      end
+    else:
+      thread_flag_93 = 2
+    end
+    $ 97 "'Per ultim comprovarem que el punt del vector flange-punta que formi part del pla de la incisio no surti del radi de la incisio'"
+    # 'Per ultim comprovarem que el punt del vector flange-punta que formi part del pla de la incisio no surti del radi de la incisio'
+    $ 98 "'Quan tinguem t la tornare a substituir a la formula de la recta i obtindrem el punt'"
+    # 'Quan tinguem t la tornare a substituir a la formula de la recta i obtindrem el punt'
+    $ 99 "t_num≔(nx*(x0-xf))+(ny*(y0-yf))+(nz*(z0-zf))"
+    global t_num=(nx*(x0-xf))+(ny*(y0-yf))+(nz*(z0-zf))
+    $ 100 "'Calculem el vector director actual de la punta al l'eina/flange'"
+    # 'Calculem el vector director actual de la punta al l'eina/flange'
+    $ 101 "vec_dir_act≔[x-xf,y-yf,z-zf]"
+    global vec_dir_act=[x-xf,y-yf,z-zf]
+    $ 102 "t_denom≔(nx*vec_dir_act[0])+(ny*vec_dir_act[1])+(nz*vec_dir_act[2])"
+    global t_denom=(nx*vec_dir_act[0])+(ny*vec_dir_act[1])+(nz*vec_dir_act[2])
+    $ 103 "'Calculem t'"
+    # 'Calculem t'
+    $ 104 "t≔t_num/t_denom"
+    global t=t_num/t_denom
+    $ 105 "'Calculem les coordenades del punt projectat al pla de la incisio'"
+    # 'Calculem les coordenades del punt projectat al pla de la incisio'
+    $ 106 "x_inc≔xf+(t*vec_dir_act[0])"
+    global x_inc=xf+(t*vec_dir_act[0])
+    $ 107 "y_inc≔yf+(t*vec_dir_act[1])"
+    global y_inc=yf+(t*vec_dir_act[1])
+    $ 108 "z_inc≔zf+(t*vec_dir_act[2])"
+    global z_inc=zf+(t*vec_dir_act[2])
+    $ 109 "'Ara calculem el radi respecte el centre de la incisio'"
+    # 'Ara calculem el radi respecte el centre de la incisio'
+    $ 110 "r_inc_act≔sqrt(pow(x_inc-x0,2)+pow(y_inc-y0,2)+pow(z_inc-z0,2))"
+    global r_inc_act=sqrt(pow(x_inc-x0,2)+pow(y_inc-y0,2)+pow(z_inc-z0,2))
+    $ 111 "'Ara comprovem que el radi actual a la incisio no sigui mes gran que el radi de la incisio'"
+    # 'Ara comprovem que el radi actual a la incisio no sigui mes gran que el radi de la incisio'
+    $ 112 "If r_inc_act≥r_incisio"
+    global thread_flag_112=0
+    thread Thread_if_112():
+      $ 113 "fora_incisio≔ True "
+      global fora_incisio=  True  
+      $ 114 "end_freedrive_mode()"
+      end_freedrive_mode()
+      $ 115 "Wait: 0.01"
+      sleep(0.01)
+      thread_flag_112 = 1
+    end
+    if (r_inc_act >= r_incisio):
+      global thread_handler_112=run Thread_if_112()
+      while (thread_flag_112 == 0):
+        if not(r_inc_act >= r_incisio):
+          kill thread_handler_112
+          thread_flag_112 = 2
+        else:
+          sync()
+        end
+      end
+    else:
+      thread_flag_112 = 2
+    end
+    $ 116 "'Comprovem si estem mes baix de la profundita permesa, si ho estem parem perque estem al limit del volum'"
+    # 'Comprovem si estem mes baix de la profundita permesa, si ho estem parem perque estem al limit del volum'
+    $ 117 "If h≥profunditat"
+    global thread_flag_117=0
+    thread Thread_if_117():
+      $ 118 "fora_punta≔ True "
+      global fora_punta=  True  
+      $ 119 "end_freedrive_mode()"
+      end_freedrive_mode()
+      $ 120 "Wait: 0.01"
+      sleep(0.01)
+      thread_flag_117 = 1
+    end
+    if (h >= profunditat):
+      global thread_handler_117=run Thread_if_117()
+      while (thread_flag_117 == 0):
+        if not(h >= profunditat):
+          kill thread_handler_117
+          thread_flag_117 = 2
+        else:
+          sync()
+        end
+      end
+    else:
+      thread_flag_117 = 2
+    end
+  end
+  def guardar_incisio():
+    $ 121 "guardar_incisio" "noBreak"
+    $ 122 "x0≔pos_incisio[0]"
+    global x0=pos_incisio[0]
+    $ 123 "y0≔pos_incisio[1]"
+    global y0=pos_incisio[1]
+    $ 124 "z0≔pos_incisio[2]"
+    global z0=pos_incisio[2]
+    $ 125 "'Guardem el centre de la incisio en tipus list'"
+    # 'Guardem el centre de la incisio en tipus list'
+    $ 126 "c_incisio≔[x0,y0,z0]"
+    global c_incisio=[x0,y0,z0]
+    $ 127 "'Ara podem obtenir la normal del pla de la incisio '"
+    # 'Ara podem obtenir la normal del pla de la incisio '
+    $ 128 "nx≔x0-xf"
+    global nx=x0-xf
+    $ 129 "ny≔y0-yf"
+    global ny=y0-yf
+    $ 130 "nz≔z0-zf"
+    global nz=z0-zf
+    $ 131 "'Ara calculem el modul per poder fer el vector unitari i calcular el punt del centre de volum a la profunditat que volem'"
+    # 'Ara calculem el modul per poder fer el vector unitari i calcular el punt del centre de volum a la profunditat que volem'
+    $ 132 "modul_n≔sqrt(pow(nx,2)+pow(ny,2)+pow(nz,2))"
+    global modul_n=sqrt(pow(nx,2)+pow(ny,2)+pow(nz,2))
+    $ 133 "unitari_n≔[nx/modul_n,ny/modul_n,nz/modul_n]"
+    global unitari_n=[nx/modul_n,ny/modul_n,nz/modul_n]
+    $ 134 "'Calculem el centre en la profunditat que volem'"
+    # 'Calculem el centre en la profunditat que volem'
+    $ 135 "c_profunditat≔[x0+(unitari_n[0]*profunditat),y0+(unitari_n[1]*profunditat),z0+(unitari_n[2]*profunditat)]"
+    global c_profunditat=[x0+(unitari_n[0]*profunditat),y0+(unitari_n[1]*profunditat),z0+(unitari_n[2]*profunditat)]
+  end
+  def Enviar_dades_tool_flange():
+    $ 136 "Enviar_dades_tool_flange" "noBreak"
+    $ 137 "'Enviem les dades necessaries per poder representar el volum a l'ordindor, enviem la posicio de tool'"
+    # 'Enviem les dades necessaries per poder representar el volum a l'ordindor, enviem la posicio de tool'
+    $ 138 "write_output_float_register(0,xf)"
+    write_output_float_register(0,xf)
+    $ 139 "write_output_float_register(1,yf)"
+    write_output_float_register(1,yf)
+    $ 140 "write_output_float_register(2,zf)"
+    write_output_float_register(2,zf)
+  end
+  def obtenir_p_flange_actual():
+    $ 141 "obtenir_p_flange_actual" "noBreak"
+    $ 142 "'Guardem la posicio de l'eina (flange)'"
+    # 'Guardem la posicio de l'eina (flange)'
+    $ 143 "pos_inc_flange≔get_actual_tool_flange_pose()"
+    global pos_inc_flange=get_actual_tool_flange_pose()
+    $ 144 "xf≔pos_inc_flange[0]"
+    global xf=pos_inc_flange[0]
+    $ 145 "yf≔pos_inc_flange[1]"
+    global yf=pos_inc_flange[1]
+    $ 146 "zf≔pos_inc_flange[2]"
+    global zf=pos_inc_flange[2]
+  end
+  $ 147 "Thread_1"
+  thread Thread_1():
+    while (True):
+      $ 148 "'Fem un thread per enviar continuament la posicio del flange ja que polyscope no te la funcio per rtde'"
+      # 'Fem un thread per enviar continuament la posicio del flange ja que polyscope no te la funcio per rtde'
+      $ 149 "Call obtenir_p_flange_actual"
+      obtenir_p_flange_actual()
+      $ 150 "Call Enviar_dades_tool_flange"
+      Enviar_dades_tool_flange()
+    end
+  end
+  threadId_Thread_1 = run Thread_1()
+  while (True):
+    $ 2 "Robot Program"
+    $ 3 "'Hem definit el valor de les variables a l'inici'"
+    # 'Hem definit el valor de les variables a l'inici'
+    $ 4 "'Definim els parametres constants'"
+    # 'Definim els parametres constants'
+    $ 5 "profunditat≔0.12"
+    global profunditat=0.12
+    $ 6 "r_incisio≔0.03"
+    global r_incisio=0.03
+    $ 7 "r_profunditat≔0.1"
+    global r_profunditat=0.1
+    $ 8 "enviant≔ True "
+    global enviant=  True  
+    $ 9 "'Ara activem el mode freedrive per moure el robot lliurament'"
+    # 'Ara activem el mode freedrive per moure el robot lliurament'
+    $ 10 "freedrive_mode()"
+    freedrive_mode()
+    $ 11 "'Ara guardem la posicio de la incisio esperant 5 segons que el robot no es mogui'"
+    # 'Ara guardem la posicio de la incisio esperant 5 segons que el robot no es mogui'
+    $ 12 "p_anterior≔[0,0,0]"
+    global p_anterior=[0,0,0]
+    $ 13 "'Enviem un 0 a l'ordinador per dir que encara no hem triat la incisio'"
+    # 'Enviem un 0 a l'ordinador per dir que encara no hem triat la incisio'
+    $ 14 "write_output_integer_register(0,0)"
+    write_output_integer_register(0,0)
+    $ 15 "Loop triant_incisio"
+    while (triant_incisio):
+      $ 16 "pos_incisio≔get_actual_tcp_pose()"
+      global pos_incisio= get_actual_tcp_pose ()
+      $ 17 "pos_list≔[pos_incisio[0],pos_incisio[1],pos_incisio[2]]"
+      global pos_list=[pos_incisio[0],pos_incisio[1],pos_incisio[2]]
+      $ 18 "diff_list≔[pos_list[0]-p_anterior[0],pos_list[1]-p_anterior[1],pos_list[2]-p_anterior[2]]"
+      global diff_list=[pos_list[0]-p_anterior[0],pos_list[1]-p_anterior[1],pos_list[2]-p_anterior[2]]
+      $ 19 "If diff_list[0]<0.01 and diff_list[1]<0.01 and diff_list[2]<0.01"
+      if (diff_list[0]<0.01  and  diff_list[1]<0.01  and  diff_list[2]<0.01):
+        $ 20 "guardant_inc≔ True "
+        global guardant_inc=  True  
+      else:
+        $ 21 "Else" "noBreak"
+        $ 22 "guardant_inc≔ False "
+        global guardant_inc=  False  
+        $ 23 "n≔0"
+        global n=0
+      end
+      $ 24 "p_anterior≔pos_list"
+      global p_anterior=pos_list
+      $ 25 "If guardant_inc≟ True "
+      if (guardant_inc ==   True  ):
+        $ 26 "n≔n+1"
+        global n=n+1
+        $ 27 "Wait: 1.0"
+        sleep(1.0)
+        $ 28 "'Contem 5 segons que el robot esta quiet per determinar que volem fer a alla la incisio'"
+        # 'Contem 5 segons que el robot esta quiet per determinar que volem fer a alla la incisio'
+        $ 29 "If n≟4"
+        if (n == 4):
+          $ 30 "Call guardar_incisio"
+          guardar_incisio()
+          $ 31 "triant_incisio≔ False "
+          global triant_incisio=  False  
+          $ 32 "'Ara enviem un 1 a l'ordindor per dir que ja hem guardat la incisio'"
+          # 'Ara enviem un 1 a l'ordindor per dir que ja hem guardat la incisio'
+          $ 33 "write_output_integer_register(0,1)"
+          write_output_integer_register(0,1)
+        end
+      end
+    end
+    $ 34 "'Ara activem el loop per poder duu a terme la intervencio'"
+    # 'Ara activem el loop per poder duu a terme la intervencio'
+    $ 35 "Loop"
+    while (True):
+      $ 36 "'Mirem les condicions i rectifiquem si es necessari'"
+      # 'Mirem les condicions i rectifiquem si es necessari'
+      $ 37 "Call comprovem"
+      comprovem()
+      $ 38 "'Corregim la posicio de la punta l'eina i del punt a l'altura dela incisio'"
+      # 'Corregim la posicio de la punta l'eina i del punt a l'altura dela incisio'
+      $ 39 "Call corregim_eina"
+      corregim_eina()
+      $ 40 "Wait: 0.01"
+      sleep(0.01)
+    end
+  end
+end
